@@ -130,7 +130,7 @@
     <item row="3" column="0">
      <widget class="QLabel" name="label_5">
       <property name="text">
-       <string>CPU核数：</string>
+       <string>CPU主频、核数：</string>
       </property>
      </widget>
     </item>

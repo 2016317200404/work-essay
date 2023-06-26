@@ -19,6 +19,9 @@ private:
     //获得CPU线程数
     void getNumberOfThreads();
 
+    //获取当前主频
+    QString getCPUMainFreq();
+
     //获取CPU核数
     QString getNumberOfCores();
 

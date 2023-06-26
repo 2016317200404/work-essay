@@ -53,6 +53,11 @@ void MainWindow::getNumberOfThreads()
     QString result = runLinuxCommand(QStringList() << "-c" << "cat /proc/cpuinfo | grep 'processor' | wc -l");
 }
 
+QString MainWindow::getCPUMainFreq()
+{
+    return runLinuxCommand(QStringList() << "-c" << "echo hh123 | sudo -S dmidecode | grep -i 'current speed' | cut -f2 -d:");
+}
+
 QString MainWindow::getNumberOfCores()
 {
     return runLinuxCommand(QStringList() << "-c" << "cat /proc/cpuinfo | grep 'cpu cores' | cut -f2 -d: | uniq");
@@ -144,7 +149,7 @@ void MainWindow::init()
 {
     //CPU
     ui->label_CPUModel->setText(getCPUModel());
-    ui->label_CPUCoreNum->setText(getNumberOfCores());
+    ui->label_CPUCoreNum->setText(getCPUMainFreq() + "/" + getNumberOfCores() + "核");
     ui->label_L1d->setText(getL1DataCache());
     ui->label_L1i->setText(getL1InstructCache());
     ui->label_L2->setText(getSecondLevelCache());
