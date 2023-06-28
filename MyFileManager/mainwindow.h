@@ -3,10 +3,48 @@
 
 #include <QMainWindow>
 #include <QFileSystemModel>
+#include <QRunnable>
+#include <QStyledItemDelegate>
+#include <QCache>
+#include <QThreadPool>
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
 QT_END_NAMESPACE
+
+class ThumbnailTask : public QObject, public QRunnable
+{
+    Q_OBJECT
+
+public:
+    explicit ThumbnailTask(const QString& filePath, QSize size, QObject* parent = nullptr);
+
+    void run() override;
+
+signals:
+    void finished(QPixmap);
+
+public:
+    QString m_filePath;
+    QSize m_size;
+    QPixmap m_pixmap;
+};
+
+class MyItemDelegate : public QStyledItemDelegate
+{
+    Q_OBJECT
+public:
+    MyItemDelegate(QObject* parent = nullptr);
+
+    void setFileSystemModel(QFileSystemModel* fileSystemModel){m_fileSystemModel = fileSystemModel;}
+
+    void paint(QPainter* painter, const QStyleOptionViewItem& option,const QModelIndex& index) const override;
+
+private:
+    QFileSystemModel* m_fileSystemModel;
+    mutable QThreadPool m_threadPool;
+    mutable QCache<QString, QPixmap> m_cache;
+};
 
 class MainWindow : public QMainWindow
 {
