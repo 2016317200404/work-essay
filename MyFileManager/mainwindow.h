@@ -7,6 +7,7 @@
 #include <QStyledItemDelegate>
 #include <QCache>
 #include <QThreadPool>
+#include <QMutex>
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -44,6 +45,7 @@ private:
     QFileSystemModel* m_fileSystemModel;
     mutable QThreadPool m_threadPool;
     mutable QCache<QString, QPixmap> m_cache;
+    mutable QMutex m_mutex; //确保数据线程安全
 };
 
 class MainWindow : public QMainWindow

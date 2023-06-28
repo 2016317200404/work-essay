@@ -27,7 +27,7 @@ MainWindow::MainWindow(QWidget *parent)
     MyItemDelegate* delegate = new MyItemDelegate(ui->listView);
     delegate->setFileSystemModel(fileModel);
     ui->listView->setItemDelegate(delegate);
-    ui->listView->setRootIndex(fileModel->index(QDir::homePath()));
+    ui->listView->setRootIndex(fileModel->index(path));
 
     ui->listView->setModelColumn(0);
 }
@@ -142,33 +142,38 @@ void MyItemDelegate::paint(QPainter *painter, const QStyleOptionViewItem &option
         QSize size = rect.size();
 
         QPixmap pixmap;
+        m_mutex.lock();
         if (m_cache.contains(filePath)) {
-                pixmap = *m_cache[filePath];
+            pixmap = *m_cache[filePath];
+            m_mutex.unlock();
         } else {
-                // 如果缓存中没有缩略图，提交加载缩略图的任务到线程池
+            m_mutex.unlock();
+            // 如果缓存中没有缩略图，提交加载缩略图的任务到线程池
 
-                MyItemDelegate* ptr = const_cast<MyItemDelegate*>(this);
-                ThumbnailTask* task = new ThumbnailTask(filePath, size, qobject_cast<QObject*>(ptr));
+            MyItemDelegate* ptr = const_cast<MyItemDelegate*>(this);
+            ThumbnailTask* task = new ThumbnailTask(filePath, size, qobject_cast<QObject*>(ptr));
 
-                connect(task, &ThumbnailTask::finished, [this,filePath,index](QPixmap pixmap) {
-                    QPixmap* temp = new QPixmap(pixmap);
-                    m_cache.insert(filePath, temp);
-                    emit m_fileSystemModel->dataChanged(index, index);
-                    m_threadPool.releaseThread();
-                });
-                m_threadPool.start(dynamic_cast<QRunnable*>(task));
+            connect(task, &ThumbnailTask::finished, [this,filePath,index](QPixmap pixmap) {
+                QPixmap* temp = new QPixmap(pixmap);
+                m_mutex.lock();
+                m_cache.insert(filePath, temp);
+                m_mutex.unlock();
+                emit m_fileSystemModel->dataChanged(index, index);
+                m_threadPool.releaseThread();
+            });
+            m_threadPool.start(dynamic_cast<QRunnable*>(task));
         }
 
         if (!pixmap.isNull()) {
-                painter->drawPixmap(rect, pixmap);
+            painter->drawPixmap(rect, pixmap);
 
-                //调整文本框的Y的位置，且调整框的高度
-                rect.setY(rect.y() + 128);
-                rect.setHeight(52);
-                QTextOption option;
-                option.setWrapMode(QTextOption::WrapAtWordBoundaryOrAnywhere);
-                painter->drawText(rect, fileInfo.baseName() , option); // 在指定位置绘制修改后的文本
-                return;
+            //调整文本框的Y的位置，且调整框的高度
+            rect.setY(rect.y() + 128);
+            rect.setHeight(52);
+            QTextOption option;
+            option.setWrapMode(QTextOption::WrapAtWordBoundaryOrAnywhere);
+            painter->drawText(rect, fileInfo.baseName() , option); // 在指定位置绘制修改后的文本
+            return;
         }
     }
 
@@ -185,58 +190,45 @@ ThumbnailTask::ThumbnailTask(const QString &filePath, QSize size, QObject *paren
 void ThumbnailTask::run()
 {
     QFileInfo fileInfo(m_filePath);
-
+    if(!fileInfo.isFile())
+        return;
 
     // 如果是图片文件，使用 QPixmap 加载缩略图
-    if (fileInfo.isFile() &&
-        (fileInfo.suffix().toLower() == "jpg" ||
-         fileInfo.suffix().toLower() == "png")) {
+    if (fileInfo.suffix().toLower() == "jpg" || fileInfo.suffix().toLower() == "png") {
         QPixmap pixmap(m_filePath);
         if (!pixmap.isNull()) {
-                m_pixmap = pixmap.scaled(m_size, Qt::KeepAspectRatio,
-                                         Qt::SmoothTransformation);
+            m_pixmap = pixmap.scaled(m_size, Qt::KeepAspectRatio,Qt::SmoothTransformation);
         }
     }
-
     // 如果是动画文件，使用 QMovie 获取第一帧并生成缩略图
-    if (fileInfo.isFile() &&
-        (fileInfo.suffix().toLower() == "gif" ||
-         fileInfo.suffix().toLower() == "apng")) {
-            qDebug() << "m_filePath" << m_filePath;
+    else if (fileInfo.suffix().toLower() == "gif" || fileInfo.suffix().toLower() == "apng") {
         QMovie movie(m_filePath);
         movie.setCacheMode(QMovie::CacheNone);
         movie.jumpToFrame(0);
         QPixmap pixmap = movie.currentPixmap();
         if (!pixmap.isNull()) {
-                m_pixmap = pixmap.scaled(m_size, Qt::KeepAspectRatio,
-                                         Qt::SmoothTransformation);
+            m_pixmap = pixmap.scaled(m_size, Qt::KeepAspectRatio,Qt::SmoothTransformation);
         }
-        qDebug() << pixmap << "pixmap";
     }
-
-    if (fileInfo.isFile() &&
-        (fileInfo.suffix().toLower() == "mp4" ||
-         fileInfo.suffix().toLower() == "avi")) {
-
+    else if (fileInfo.suffix().toLower() == "mp4" || fileInfo.suffix().toLower() == "avi") {
         //确保缩略图的文件夹存在
         QString dirName = fileInfo.path() + "/thumb";
         qDebug() << fileInfo.path() << "fileInfo.path()";
         QDir dir(dirName);
         if(!dir.exists()){
-                if(dir.mkpath(dirName)){
-                    qDebug() << "Folder created successfully.";
-                }else{
-                    qDebug() << "Failed to create folder.";
-                }
+            if(dir.mkpath(dirName)){
+                qDebug() << "Folder created successfully.";
+            }else{
+                qDebug() << "Failed to create folder.";
+            }
         }
 
         QString thumbnail = dirName + "/" + fileInfo.baseName() + ".jpg";
-        qDebug() << thumbnail << fileInfo.baseName();
 
         if(!QFileInfo::exists(thumbnail)){
                 QProcess process;
                 process.setWorkingDirectory(fileInfo.path());
-                QString command = QString("ffmpeg -i \"%1.mp4\" -ss 00:00:01 -vframes 1 -s 640x360 \"thumb/%1.jpg\"").arg(fileInfo.baseName());
+                QString command = QString("ffmpeg -i \"%1.mp4\" -ss 00:00:00 -vframes 1 -s 640x360 \"thumb/%1.jpg\"").arg(fileInfo.baseName());
                 process.start(command);
                 if(!process.waitForFinished(-1)){
                     qWarning() << "Failed to generate thumb image with ffmpeg";
