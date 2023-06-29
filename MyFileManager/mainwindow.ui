@@ -67,7 +67,7 @@
     <item>
      <layout class="QHBoxLayout" name="horizontalLayout">
       <item>
-       <widget class="QListView" name="listView">
+       <widget class="MyListView" name="listView">
         <property name="tabKeyNavigation">
          <bool>true</bool>
         </property>
@@ -128,6 +128,13 @@
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>MyListView</class>
+   <extends>QListView</extends>
+   <header>mainwindow.h</header>
+  </customwidget>
+ </customwidgets>
  <resources/>
  <connections>
   <connection>

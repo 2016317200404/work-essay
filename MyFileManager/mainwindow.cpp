@@ -11,6 +11,9 @@
 #include <cstdlib>
 #include <QPainter>
 #include <QMovie>
+#include <QAbstractScrollArea>
+#include <QScroller>
+#include <QEvent>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -30,6 +33,8 @@ MainWindow::MainWindow(QWidget *parent)
     ui->listView->setRootIndex(fileModel->index(path));
 
     ui->listView->setModelColumn(0);
+
+    connect(ui->listView,&MyListView::itemDoubleClicked,this,&MainWindow::on_listView_doubleClicked);
 }
 
 MainWindow::~MainWindow()
@@ -239,4 +244,45 @@ void ThumbnailTask::run()
     }
 
     emit finished(m_pixmap);
+}
+
+MyListView::MyListView(QWidget *parent)
+    : QListView(parent)
+{
+    //接受点击手势
+    setAttribute(Qt::WA_AcceptTouchEvents);
+    grabGesture(Qt::TapGesture);
+
+    //设置滑动条，滑动条接受滑动手势
+    setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+
+    QScroller::grabGesture(this,QScroller::TouchGesture);
+    QScrollerProperties properties = QScroller::scroller(this)->scrollerProperties();
+
+    properties.setScrollMetric(QScrollerProperties::VerticalOvershootPolicy,QScrollerProperties::OvershootAlwaysOff);
+    properties.setScrollMetric(QScrollerProperties::HorizontalOvershootPolicy,QScrollerProperties::OvershootAlwaysOff);
+    QScroller::scroller(this)->setScrollerProperties(properties);
+}
+
+bool MyListView::event(QEvent *event)
+{
+    if (event->type() == QEvent::Gesture){
+        return gestureEvent(static_cast<QGestureEvent *>(event));
+    }
+    return QListView::event(event);
+}
+
+bool MyListView::gestureEvent(QGestureEvent *event)
+{
+    if(QGesture *gesture = event->gesture(Qt::TapGesture)){
+        QTapGesture *tapsture = static_cast<QTapGesture *>(gesture);
+        QModelIndex index = indexAt(tapsture->position().toPoint());
+        if(index.isValid()){
+                emit itemDoubleClicked(index);
+                event->accept();
+                return true;
+        }
+    }
+    return false;
 }

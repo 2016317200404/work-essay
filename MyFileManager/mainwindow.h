@@ -8,6 +8,8 @@
 #include <QCache>
 #include <QThreadPool>
 #include <QMutex>
+#include <QListView>
+#include <QGestureEvent>
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -31,11 +33,26 @@ public:
     QPixmap m_pixmap;
 };
 
+class MyListView : public QListView
+{
+    Q_OBJECT
+public:
+    explicit MyListView(QWidget *parent = nullptr);
+
+protected:
+    bool event(QEvent *event) override;
+
+    bool gestureEvent(QGestureEvent *event);
+
+signals:
+    void itemDoubleClicked(const QModelIndex &index);
+};
+
 class MyItemDelegate : public QStyledItemDelegate
 {
     Q_OBJECT
 public:
-    MyItemDelegate(QObject* parent = nullptr);
+    explicit MyItemDelegate(QObject* parent = nullptr);
 
     void setFileSystemModel(QFileSystemModel* fileSystemModel){m_fileSystemModel = fileSystemModel;}
 
