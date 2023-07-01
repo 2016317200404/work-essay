@@ -21,6 +21,10 @@
 ## 2023.6.29
 1. 文件管理器接受滑动、点击手势
 
+## 2023.7.1
+1. 新增日历控件
+参考 https://github.com/xiaoqiaonihao/CalendarWidget
+
 ### 暂时只支持CPU、内存条信息
 
 ![hardwareInfo]
