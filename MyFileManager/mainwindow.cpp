@@ -15,18 +15,21 @@
 #include <QScroller>
 #include <QEvent>
 
+// MainWindow constructor: sets up the user interface and initializes the file model
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
 
+    // Set up the file model
     fileModel = new QFileSystemModel(this);
     QString path = QDir::rootPath();
     ui->line_currentPath->setText(path);
     fileModel->setRootPath(path);
     ui->listView->setModel(fileModel);
 
+    // Set up the item delegate
     MyItemDelegate* delegate = new MyItemDelegate(ui->listView);
     delegate->setFileSystemModel(fileModel);
     ui->listView->setItemDelegate(delegate);
@@ -34,16 +37,20 @@ MainWindow::MainWindow(QWidget *parent)
 
     ui->listView->setModelColumn(0);
 
+    // Connect the double-click signal to the slot
     connect(ui->listView,&MyListView::itemDoubleClicked,this,&MainWindow::on_listView_doubleClicked);
 }
 
 MainWindow::~MainWindow()
 {
+    delete fileModel;
     delete ui;
 }
 
+//Slot for handling double-click events in the list view
 void MainWindow::on_listView_doubleClicked(const QModelIndex &index)
 {
+    // If the item is a directory, navigate into it
     if (fileModel->isDir(index)) {
         ui->listView->setRootIndex(index);
 
@@ -51,6 +58,7 @@ void MainWindow::on_listView_doubleClicked(const QModelIndex &index)
         ui->line_currentPath->setText(filePath);
         fileModel->setRootPath(filePath);
     }
+    // If the item is a file, show a dialog to rename it
     else{
         QModelIndexList selection = ui->listView->selectionModel()->selectedIndexes();
         if (!selection.isEmpty()) {
@@ -121,6 +129,7 @@ MyItemDelegate::MyItemDelegate(QObject *parent)
     m_threadPool.setMaxThreadCount(8);
 }
 
+// Custom item delegate for painting items in the list view
 void MyItemDelegate::paint(QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index) const
 {
     if (!index.isValid())
@@ -137,6 +146,7 @@ void MyItemDelegate::paint(QPainter *painter, const QStyleOptionViewItem &option
     // 创建 QFileInfo 对象
     QFileInfo fileInfo(filePath);
 
+    // If the item is an image or video file, show a thumbnail
     if (fileInfo.isFile() &&
         (fileInfo.suffix().toLower() == "jpg" || fileInfo.suffix().toLower() == "png" ||
         fileInfo.suffix().toLower() == "mp4" || fileInfo.suffix().toLower() == "avi")) {
@@ -182,6 +192,7 @@ void MyItemDelegate::paint(QPainter *painter, const QStyleOptionViewItem &option
         }
     }
 
+    // Otherwise, use the default painting
     QStyledItemDelegate::paint(painter, opt, index);
 }
 
@@ -192,13 +203,14 @@ ThumbnailTask::ThumbnailTask(const QString &filePath, QSize size, QObject *paren
 {
 }
 
+// Task for generating a thumbnail for a file
 void ThumbnailTask::run()
 {
     QFileInfo fileInfo(m_filePath);
     if(!fileInfo.isFile())
         return;
 
-    // 如果是图片文件，使用 QPixmap 加载缩略图
+    // If the file is an image, load the thumbnail with QPixmap
     if (fileInfo.suffix().toLower() == "jpg" || fileInfo.suffix().toLower() == "png") {
         QPixmap pixmap(m_filePath);
         if (!pixmap.isNull()) {
@@ -215,6 +227,7 @@ void ThumbnailTask::run()
             m_pixmap = pixmap.scaled(m_size, Qt::KeepAspectRatio,Qt::SmoothTransformation);
         }
     }
+    // If the file is a video, generate the thumbnail with ffmpeg
     else if (fileInfo.suffix().toLower() == "mp4" || fileInfo.suffix().toLower() == "avi") {
         //确保缩略图的文件夹存在
         QString dirName = fileInfo.path() + "/thumb";
@@ -240,7 +253,7 @@ void ThumbnailTask::run()
                     return;
                 }
         }
-        m_pixmap = QPixmap(thumbnail);
+        m_pixmap.load(thumbnail);
     }
 
     emit finished(m_pixmap);
@@ -275,6 +288,7 @@ bool MyListView::event(QEvent *event)
 
 bool MyListView::gestureEvent(QGestureEvent *event)
 {
+    // If the gesture is a double-tap, emit the itemDoubleClicked signal
     if(QGesture *gesture = event->gesture(Qt::TapGesture)){
         QTapGesture *tapsture = static_cast<QTapGesture *>(gesture);
         QModelIndex index = indexAt(tapsture->position().toPoint());
