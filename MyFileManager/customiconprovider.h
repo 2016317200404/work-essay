@@ -2,6 +2,8 @@
 #define CUSTOMICONPROVIDER_H
 
 #include <QMap>
+#include <QMutex>
+#include <QCache>
 #include <QObject>
 #include <QFileIconProvider>
 
@@ -22,7 +24,14 @@ signals:
     void requireThumbnail(const QString &videoPath) const;
 
 private:
-    QMap<QString, QImage> thumbnails;
+    void GenerateImageThumbnails(const QString &videoPath, const QImage &thumbnail);
+
+    void GenerateVideoThumbnails(const QString &videoPath, const QImage &thumbnail);
+
+private:
+    int canvasSize = 128;
+    mutable QMutex m_Lock;
+    QCache<QString, QPixmap> m_Cthumbnails;
 };
 
 #endif // CUSTOMICONPROVIDER_H

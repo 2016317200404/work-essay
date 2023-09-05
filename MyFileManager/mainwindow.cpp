@@ -20,7 +20,7 @@ MainWindow::MainWindow(QWidget *parent)
 {
     ui->setupUi(this);
 
-    m_threadPool.setMaxThreadCount(3);
+//    m_threadPool.setMaxThreadCount(3);
 
     // Set up the file model
     fileModel = new MyFileSystemModel(this);
@@ -35,24 +35,8 @@ MainWindow::MainWindow(QWidget *parent)
         if (index.isValid()) {
             QIcon icon = iconProvider->icon(QFileInfo(videoPath));
             fileModel->setData(index, icon, Qt::DecorationRole);
-//            ui->listView->update();
-
-//            emit fileModel->dataChanged(index, index);
-//            ui->listView->setModel(nullptr);
-//            ui->listView->setModel(fileModel);
+            ui->listView->doItemsLayout();
         }
-//        QString filePath = videoPath.mid(videoPath.lastIndexOf("/") + 1);
-//        for (int row = 0; row < fileModel->rowCount(); ++row) {
-//            for (int column = 0; column < fileModel->columnCount(); ++column) {
-//                QModelIndex index = fileModel->index(row, column);
-//                qDebug() <<index.data().toString() << row << column;
-//                if (index.data().toString() == filePath) {
-//                    // 触发数据改变信号，以便更新视图
-//                    emit fileModel->dataChanged(index, index);
-//                    return;
-//                }
-//            }
-//        }
     });
     connect(iconProvider, &CustomIconProvider::requireThumbnail, this, &MainWindow::getThumbnail);
 
@@ -154,74 +138,17 @@ void MainWindow::backToPrevious()
 
 void MainWindow::getThumbnail(const QString &videoPath)
 {
+    if (m_VecFilePath.contains(videoPath))
+            return;
     ThumbnailTask* task = new ThumbnailTask(videoPath);
-    connect(task, &ThumbnailTask::thumbnailGenerated, iconProvider, &CustomIconProvider::onThumbnailGenerated);
+    connect(task, &ThumbnailTask::thumbnailGenerated, this, &MainWindow::onThumbnailGenerated);
     m_threadPool.start(dynamic_cast<QRunnable*>(task));
+    m_VecFilePath.append(videoPath);
+    qDebug() << m_threadPool.activeThreadCount() << "activeThreadCount";
 }
 
-// Custom item delegate for painting items in the list view
-void MyItemDelegate::paint(QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index) const
+void MainWindow::onThumbnailGenerated(const QString &videoPath, const QImage &thumbnail)
 {
-    if (!index.isValid())
-        return;
-
-    QStyleOptionViewItem opt = option;
-    initStyleOption(&opt, index);
-
-    QString fileName = opt.text;
-
-    // 获取文件路径
-    QString filePath = m_fileSystemModel->rootPath() + QDir::separator() + fileName;
-
-    // 创建 QFileInfo 对象
-    QFileInfo fileInfo(filePath);
-
-    // If the item is an image or video file, show a thumbnail
-    if (fileInfo.isFile() &&
-        (fileInfo.suffix().toLower() == "jpg" || fileInfo.suffix().toLower() == "png" ||
-        fileInfo.suffix().toLower() == "mp4" || fileInfo.suffix().toLower() == "avi")) {
-        //调整重绘图像的大小
-        QRect rect = opt.rect;
-        rect.setWidth(128);
-        rect.setHeight(128);
-        QSize size = rect.size();
-
-        QPixmap pixmap;
-        m_mutex.lock();
-        if (m_cache.contains(filePath)) {
-            pixmap = *m_cache[filePath];
-            m_mutex.unlock();
-        } else {
-            m_mutex.unlock();
-            // 如果缓存中没有缩略图，提交加载缩略图的任务到线程池
-
-            MyItemDelegate* ptr = const_cast<MyItemDelegate*>(this);
-            ThumbnailTask* task = new ThumbnailTask(filePath, size, qobject_cast<QObject*>(ptr));
-
-            connect(task, &ThumbnailTask::finished, [this,filePath,index](QPixmap pixmap) {
-                QPixmap* temp = new QPixmap(pixmap);
-                m_mutex.lock();
-                m_cache.insert(filePath, temp);
-                m_mutex.unlock();
-                emit m_fileSystemModel->dataChanged(index, index);
-                m_threadPool.releaseThread();
-            });
-            m_threadPool.start(dynamic_cast<QRunnable*>(task));
-        }
-
-        if (!pixmap.isNull()) {
-            painter->drawPixmap(rect, pixmap);
-
-            //调整文本框的Y的位置，且调整框的高度
-            rect.setY(rect.y() + 128);
-            rect.setHeight(52);
-            QTextOption option;
-            option.setWrapMode(QTextOption::WrapAtWordBoundaryOrAnywhere);
-            painter->drawText(rect, fileInfo.baseName() , option); // 在指定位置绘制修改后的文本
-            return;
-        }
-    }
-
-    // Otherwise, use the default painting
-    QStyledItemDelegate::paint(painter, opt, index);
+    iconProvider->onThumbnailGenerated(videoPath, thumbnail);
+    m_VecFilePath.remove(m_VecFilePath.indexOf(videoPath));
 }

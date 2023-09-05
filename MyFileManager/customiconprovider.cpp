@@ -1,58 +1,27 @@
 #include "customiconprovider.h"
+#include <QDebug>
 #include <QThread>
 #include <QPainter>
 
 CustomIconProvider::CustomIconProvider()
     : QObject(), QFileIconProvider()
 {
+    m_Cthumbnails.setMaxCost(80);
 }
 
 QIcon CustomIconProvider::icon(const QFileInfo &info) const
 {
     if (info.isFile()) {
         QString ext = info.suffix().toLower();
-        if (ext == "jpg" || ext == "jpeg" || ext == "png" || ext == "gif") {
-            // 使用自定义图像文件图标
-            int canvasSize = 128;
-            QPixmap pixmap = QPixmap(info.absoluteFilePath());
-            pixmap = pixmap.scaled(QSize(canvasSize, canvasSize), Qt::KeepAspectRatio, Qt::SmoothTransformation);
-
-            QPixmap canvas(128, 128);
-            canvas.fill(Qt::transparent);
-
-            QPainter painter(&canvas);
-            int x = (canvasSize - pixmap.width()) / 2;
-            int y = (canvasSize - pixmap.height()) / 2;
-            painter.drawPixmap(x, y, pixmap);
-
-            painter.end();
-
-            return QIcon(canvas);
-        } else if (ext == "mp4" || ext == "avi" || ext == "mov" || ext == "wmv") {
-            if (thumbnails.contains(info.absoluteFilePath())) {
-                int canvasSize = 128;
-                QPixmap pixmap = QPixmap::fromImage(thumbnails[info.absoluteFilePath()]);
-                pixmap = pixmap.scaled(QSize(canvasSize, canvasSize), Qt::KeepAspectRatio, Qt::SmoothTransformation);
-
-                QPixmap player(":/new/prefix1/icon/player.png");
-
-                QPixmap canvas(128, 128);
-                canvas.fill(Qt::transparent);
-
-                QPainter painter(&canvas);
-                int x = (canvasSize - pixmap.width()) / 2;
-                int y = (canvasSize - pixmap.height()) / 2;
-                painter.drawPixmap(x, y, pixmap);
-
-                x = (canvasSize - player.width()) / 2;
-                y = (canvasSize - player.height()) / 2;
-                painter.drawPixmap(x, y, player);
-
-                painter.end();
-
-                return QIcon(canvas);
-//                return QIcon(QPixmap::fromImage(thumbnails[info.absoluteFilePath()]));
+        if (ext == "jpg" || ext == "jpeg" || ext == "png" || ext == "gif" ||
+            ext == "mp4" || ext == "avi" || ext == "mov" || ext == "wmv") {
+            if (m_Cthumbnails.contains(info.absoluteFilePath())) {
+                m_Lock.lock();
+                QIcon icon((*m_Cthumbnails[info.absoluteFilePath()]));
+                m_Lock.unlock();
+                return icon;
             } else {
+//                qDebug() << "requireThumbnail" << info.absoluteFilePath();
                 emit requireThumbnail(info.absoluteFilePath());
             }
         }
@@ -64,6 +33,57 @@ QIcon CustomIconProvider::icon(const QFileInfo &info) const
 
 void CustomIconProvider::onThumbnailGenerated(const QString &videoPath, const QImage &thumbnail)
 {
-    thumbnails[videoPath] = thumbnail;
+    QFileInfo fileInfo(videoPath);
+    QString ext = fileInfo.suffix().toLower();
+    if (ext == "jpg" || ext == "jpeg" || ext == "png" || ext == "gif")
+        GenerateImageThumbnails(videoPath, thumbnail);
+    else
+        GenerateVideoThumbnails(videoPath, thumbnail);
     emit thumbnailAvailable(videoPath);
+}
+
+void CustomIconProvider::GenerateImageThumbnails(const QString &videoPath, const QImage &thumbnail)
+{
+    QPixmap pixmap = QPixmap::fromImage(thumbnail);
+    pixmap = pixmap.scaled(QSize(canvasSize, canvasSize), Qt::KeepAspectRatio, Qt::SmoothTransformation);
+
+    QPixmap canvas(canvasSize, canvasSize);
+    canvas.fill(Qt::transparent);
+
+    QPainter painter(&canvas);
+    int x = (canvasSize - pixmap.width()) / 2;
+    int y = (canvasSize - pixmap.height()) / 2;
+    painter.drawPixmap(x, y, pixmap);
+
+    painter.end();
+
+    m_Lock.lock();
+    m_Cthumbnails.insert(videoPath, new QPixmap(canvas));
+    m_Lock.unlock();
+}
+
+void CustomIconProvider::GenerateVideoThumbnails(const QString &videoPath, const QImage &thumbnail)
+{
+    QPixmap pixmap = QPixmap::fromImage(thumbnail);
+    pixmap = pixmap.scaled(QSize(canvasSize, canvasSize), Qt::KeepAspectRatio, Qt::SmoothTransformation);
+
+    QPixmap player(":/new/prefix1/icon/player.png");
+
+    QPixmap canvas(canvasSize, canvasSize);
+    canvas.fill(Qt::transparent);
+
+    QPainter painter(&canvas);
+    int x = (canvasSize - pixmap.width()) / 2;
+    int y = (canvasSize - pixmap.height()) / 2;
+    painter.drawPixmap(x, y, pixmap);
+
+    x = (canvasSize - player.width()) / 2;
+    y = (canvasSize - player.height()) / 2;
+    painter.drawPixmap(x, y, player);
+
+    painter.end();
+
+    m_Lock.lock();
+    m_Cthumbnails.insert(videoPath, new QPixmap(canvas));
+    m_Lock.unlock();
 }

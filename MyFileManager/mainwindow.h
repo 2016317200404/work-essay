@@ -19,23 +19,6 @@ QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
 QT_END_NAMESPACE
 
-class MyItemDelegate : public QStyledItemDelegate
-{
-    Q_OBJECT
-public:
-    explicit MyItemDelegate(QObject* parent = nullptr);
-
-    void setFileSystemModel(QFileSystemModel* fileSystemModel){m_fileSystemModel = fileSystemModel;}
-
-    void paint(QPainter* painter, const QStyleOptionViewItem& option,const QModelIndex& index) const override;
-
-private:
-    QFileSystemModel* m_fileSystemModel;
-    mutable QThreadPool m_threadPool;
-    mutable QCache<QString, QPixmap> m_cache;
-    mutable QMutex m_mutex; //确保数据线程安全
-};
-
 class MainWindow : public QMainWindow
 {
     Q_OBJECT
@@ -56,6 +39,8 @@ private slots:
 
     void getThumbnail(const QString &videoPath);
 
+    void onThumbnailGenerated(const QString &videoPath, const QImage &thumbnail);
+
 private:
     Ui::MainWindow *ui;
 
@@ -66,5 +51,7 @@ private:
     CustomIconProvider* iconProvider;
 
     QThreadPool m_threadPool;
+
+    QVector<QString> m_VecFilePath;
 };
 #endif // MAINWINDOW_H
