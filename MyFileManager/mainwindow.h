@@ -11,42 +11,13 @@
 #include <QListView>
 #include <QGestureEvent>
 
+#include "iconview.h"
+#include "myfilesystemmodel.h"
+#include "customiconprovider.h"
+
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
 QT_END_NAMESPACE
-
-class ThumbnailTask : public QObject, public QRunnable
-{
-    Q_OBJECT
-
-public:
-    explicit ThumbnailTask(const QString& filePath, QSize size, QObject* parent = nullptr);
-
-    void run() override;
-
-signals:
-    void finished(QPixmap);
-
-public:
-    QString m_filePath;
-    QSize m_size;
-    QPixmap m_pixmap;
-};
-
-class MyListView : public QListView
-{
-    Q_OBJECT
-public:
-    explicit MyListView(QWidget *parent = nullptr);
-
-protected:
-    bool event(QEvent *event) override;
-
-    bool gestureEvent(QGestureEvent *event);
-
-signals:
-    void itemDoubleClicked(const QModelIndex &index);
-};
 
 class MyItemDelegate : public QStyledItemDelegate
 {
@@ -83,9 +54,17 @@ private slots:
     //返回上一级
     void backToPrevious();
 
+    void getThumbnail(const QString &videoPath);
+
 private:
     Ui::MainWindow *ui;
 
-    QFileSystemModel *fileModel;
+    IconViewDelegate *ivdelegate;
+
+    MyFileSystemModel *fileModel;
+
+    CustomIconProvider* iconProvider;
+
+    QThreadPool m_threadPool;
 };
 #endif // MAINWINDOW_H

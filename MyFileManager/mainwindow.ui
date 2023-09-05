@@ -68,12 +68,6 @@
      <layout class="QHBoxLayout" name="horizontalLayout">
       <item>
        <widget class="MyListView" name="listView">
-        <property name="tabKeyNavigation">
-         <bool>true</bool>
-        </property>
-        <property name="alternatingRowColors">
-         <bool>false</bool>
-        </property>
         <property name="iconSize">
          <size>
           <width>128</width>
@@ -83,32 +77,14 @@
         <property name="movement">
          <enum>QListView::Static</enum>
         </property>
-        <property name="isWrapping" stdset="0">
-         <bool>true</bool>
-        </property>
         <property name="resizeMode">
          <enum>QListView::Adjust</enum>
-        </property>
-        <property name="layoutMode">
-         <enum>QListView::Batched</enum>
-        </property>
-        <property name="gridSize">
-         <size>
-          <width>168</width>
-          <height>180</height>
-         </size>
         </property>
         <property name="viewMode">
          <enum>QListView::IconMode</enum>
         </property>
-        <property name="uniformItemSizes">
-         <bool>false</bool>
-        </property>
         <property name="wordWrap">
          <bool>true</bool>
-        </property>
-        <property name="itemAlignment">
-         <set>Qt::AlignCenter</set>
         </property>
        </widget>
       </item>
@@ -132,7 +108,7 @@
   <customwidget>
    <class>MyListView</class>
    <extends>QListView</extends>
-   <header>mainwindow.h</header>
+   <header>mylistview.h</header>
   </customwidget>
  </customwidgets>
  <resources/>
