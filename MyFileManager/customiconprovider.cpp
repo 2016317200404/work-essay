@@ -6,7 +6,7 @@
 CustomIconProvider::CustomIconProvider()
     : QObject(), QFileIconProvider()
 {
-    m_Cthumbnails.setMaxCost(80);
+    m_Cthumbnails.setMaxCost(1000);
 }
 
 QIcon CustomIconProvider::icon(const QFileInfo &info) const
@@ -21,8 +21,12 @@ QIcon CustomIconProvider::icon(const QFileInfo &info) const
                 m_Lock.unlock();
                 return icon;
             } else {
-//                qDebug() << "requireThumbnail" << info.absoluteFilePath();
                 emit requireThumbnail(info.absoluteFilePath());
+
+                QPixmap pixmap(128, 128);
+                pixmap.fill(Qt::transparent);
+
+                return QIcon(pixmap);
             }
         }
     }

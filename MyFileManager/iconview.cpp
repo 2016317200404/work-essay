@@ -53,6 +53,8 @@ void IconViewDelegate::paint(QPainter *painter,
                              const QStyleOptionViewItem &option,
                              const QModelIndex &index) const
 {
+    if (!index.isValid())
+        return;
     QIcon icon = qvariant_cast<QIcon>(index.data(Qt::DecorationRole));
     QSize iconsize = icon.actualSize(option.decorationSize);
     QRect item = option.rect;

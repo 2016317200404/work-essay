@@ -20,7 +20,7 @@ MainWindow::MainWindow(QWidget *parent)
 {
     ui->setupUi(this);
 
-//    m_threadPool.setMaxThreadCount(3);
+    m_threadPool.setMaxThreadCount(QThread::idealThreadCount() / 2 + 1);
 
     // Set up the file model
     fileModel = new MyFileSystemModel(this);
@@ -35,7 +35,7 @@ MainWindow::MainWindow(QWidget *parent)
         if (index.isValid()) {
             QIcon icon = iconProvider->icon(QFileInfo(videoPath));
             fileModel->setData(index, icon, Qt::DecorationRole);
-            ui->listView->doItemsLayout();
+//            ui->listView->doItemsLayout();
         }
     });
     connect(iconProvider, &CustomIconProvider::requireThumbnail, this, &MainWindow::getThumbnail);
